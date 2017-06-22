@@ -358,7 +358,7 @@ def ingest(fnames, fs=None):
             header_data[_ALS_KEY_MAP.get(k, 'start')][k] = v
         file_header_data.append(header_data)
     del header_data
-    start_md = {}
+    start_md = {'mode':'tiled'}
     # TODO check for conflicts and resolve better
     [start_md.update(h_md['start']) for h_md in file_header_data[::-1]]
 
@@ -459,7 +459,7 @@ def ingest(fnames, fs=None):
         data.update(header_data_for_scatter_event)
 
         yield 'event', {'descriptor': desc_uid,
-                        'timestamps': {'image': ts},
+                        'timestamps': {k: ts for k in data},
                         'data': data,
                         'time': ts,
                         'seq_num': 1,
