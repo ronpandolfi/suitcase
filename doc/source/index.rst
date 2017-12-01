@@ -10,7 +10,7 @@ Suitcase is a simple utility for exporting data from the
 `databroker <https://nsls-ii.github.io/databroker>`_
 into a stand-alone, portable file.
 
-Currently, it has just one function, ``export``, which writes the data from
+Currently, it has one main function called ``export``, which writes the data from
 one or more runs into HDF5 file.
 
 Usage Example
@@ -18,15 +18,30 @@ Usage Example
 
 .. code-block:: python
 
-    from databroker import DataBroker as db
-    import suitcase
+    from databroker import db # the way to import db will be changed later
+    from suitcase import hdf5
     last_run = db[-1]
-    suitcase.export(last_run, 'myfile.h5')
+    hdf5.export(last_run, 'myfile.h5', db=db)
 
-The first argument may be a single Header or a list of Headers. This is the
-API documentation for the only function in suitcase:
+The first argument may be a single Header or a list of Headers. You can also use keyword "fields"
+in this function to define specifically which data sets you want to output.
 
-.. currentmodule:: suitcase
+.. code-block:: python
+
+    from suitcase import hdf5
+    hdr = db[123]
+    un_wanted_fields = ['A', 'B', 'C']
+    fds = hdf5.filter_fields(hdr, un_wanted_fields)
+    filename = 'scanID_123.h5'
+    hdf5.export(hdr, filename, fields=fds, db=db)
+
+Here I assume A, B, C are keywords for some vector data, like images. You can define them as un_wanted_fields.
+Saving data with scaler data and header information should be very faster. Please also define filename clearly,
+so you know which data it comes from.
+
+API documentation for exporting hdf function in suitcase:
+
+.. currentmodule:: suitcase.hdf5
 
 .. autofunction:: export
 
