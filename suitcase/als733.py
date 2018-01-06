@@ -12,7 +12,7 @@ import re
 
 import numpy as np
 
-from filestore.handlers_base import HandlerBase
+from databroker.assets.handlers_base import HandlerBase
 # start -> start document
 # event -> baseline reading
 # scatter_event -> merge with detector data
@@ -260,19 +260,7 @@ class ALSEDFHandler(HandlerBase):
         return self._file.data
 
 
-def register_fabioclass(cls):
-    setattr(fabio.openimage, cls.__name__, cls)
-    for extension in cls.extensions:
-        if extension in fabioutils.FILETYPES:
-            fabioutils.FILETYPES[extension].append(cls.__name__.rstrip('image'))
-        else:
-            fabioutils.FILETYPES[extension] = [cls.__name__.rstrip('image')]
-    return cls
-
-
-@register_fabioclass
 class EdfImage(edfimage.EdfImage):
-    extensions = ['.edf']
 
     def read(self, f, frame=None):
         return super(EdfImage, self).read(f, frame)
