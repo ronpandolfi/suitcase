@@ -37,16 +37,16 @@ _ALS_KEY_MAP = {
                 'Beamstop X': 'event',
                 'Beamstop Y': 'event',
                 'Bruker pulses': 'event',
-                'ByteOrder': ['start', 'scatter_event'],
+                'ByteOrder': 'start',
                 'DIOs': 'event',
-                'DataType': ['start', 'scatter_event'],
-                'Date': ['start', 'scatter_event'],
+                'DataType': 'start',
+                'Date': 'start',
                 'Detector Horizontal': 'scatter_event',
                 'Detector Left Motor': 'scatter_event',
                 'Detector Right Motor': 'scatter_event',
                 'Detector Vertical': 'scatter_event',
-                'Dim_1': ['descriptor', 'scatter_event'],
-                'Dim_2': ['descriptor', 'scatter_event'],
+                'Dim_1': 'descriptor',
+                'Dim_2': 'descriptor',
                 'EZ fast tension stage': 'event',
                 'Exit Slit bottom': 'event',
                 'Exit Slit left': 'event',
@@ -63,10 +63,10 @@ _ALS_KEY_MAP = {
                 'GiSAXS Beamstop Counter': 'event',
                 'GiSAXS Beamstop': 'event',
                 'Hacked Ager Stage': 'event',
-                'HeaderID': ['start', 'scatter_event'],
+                'HeaderID': 'start',
                 'I1 AI': 'scatter_event',
                 'I1': 'scatter_event',
-                'Image': ['scatter_event', 'scatter_event'],
+                'Image': 'scatter_event',
                 'Izero AI': 'scatter_event',
                 'Izero': 'scatter_event',
                 'Keyless value #1': 'scatter_event',
@@ -99,7 +99,7 @@ _ALS_KEY_MAP = {
                 'Sample Y Stage Arthur': 'event',
                 'Sample Y Stage': 'event',
                 'Sample Y Stage_old': 'event',
-                'Size': ['descriptor', 'scatter_event'],
+                'Size': 'descriptor',
                 'Slit 1 in Position': 'event',
                 'Slit 2 in Position': 'event',
                 'Slit Bottom Good': 'event',
@@ -110,7 +110,7 @@ _ALS_KEY_MAP = {
                 'Slit1 top': 'event',
                 'Sum of Slit Current': 'scatter_event',
                 'Temp Beamline Shutter Open': 'event',
-                'VersionNumber': ['start', 'scatter_event'],
+                'VersionNumber': 'start',
                 'Vertical Beam Position': 'event',
                 'Xtal2 Pico 1 Feedback': 'event',
                 'Xtal2 Pico 1': 'event',
@@ -118,11 +118,11 @@ _ALS_KEY_MAP = {
                 'Xtal2 Pico 2': 'event',
                 'Xtal2 Pico 3 Feedback': 'event',
                 'Xtal2 Pico 3': 'event',
-                'count_time': ['descriptor', 'scatter_event'],
-                'run': ['event', 'scatter_event'],
+                'count_time': 'descriptor',
+                'run': 'event',
                 'slit1 bottom current': 'event',
                 'slit1 top current': 'event',
-                'title': ['event', 'scatter_event'],
+                'title': 'event',
 }
 
 key_type_map = {'HeaderID': 'str',
@@ -343,21 +343,10 @@ def ingest(fnames, fs=None):
             'scatter_event': {}}
         for k, v in fin.header.items():
             v = conversions[key_type_map.get(k, 'str')](v)
-            keydests = _ALS_KEY_MAP.get(k, 'start')
-            if isinstance(keydests, str): keydests = [keydests]
-            for keydest in keydests:
-                header_data[keydest][k] = v
+            header_data[_ALS_KEY_MAP.get(k, 'start')][k] = v
         file_header_data.append(header_data)
     del header_data
-
-    start_md = {}
-    if len(fnames) > 2:
-        start_md['mode'] = 'burst'
-    elif len(fnames) == 2:
-        start_md['mode'] = 'tiled'
-    elif len(fnames) == 1:
-        start_md['mode'] = 'single'
-
+    start_md = {'mode':'tiled'}
     # TODO check for conflicts and resolve better
     [start_md.update(h_md['start']) for h_md in file_header_data[::-1]]
 
@@ -374,7 +363,7 @@ def ingest(fnames, fs=None):
                     **start_md}
 
     # generate descriptor + event for 'baseline' measurements
-    bl_desc = _gen_descriptor_from_dict(file_header_data[-1]['event'],
+    bl_desc = _gen_descriptor_from_dict(file_header_data[0]['event'],
                                         'ALS top-level group attrs')
     yield 'descriptor', {'run_start': st_uid,
                          'name': 'baseline',
@@ -446,19 +435,15 @@ def ingest(fnames, fs=None):
             fnames, res_uids, file_header_data):
 
         dset_name = fname
-        f = fabio.open(fname)
 
         if res_uid is not None:
             d_uid = str(uuid.uuid4())
             fs.insert_datum(res_uid, d_uid, {'dset_name': dset_name})
             data = {'image': d_uid}
         else:
-            data = {'image': f.data.squeeze()}
+            data = {'image': fabio.open(fname).data.squeeze()}
 
-        if start_md['mode'] == 'burst':  # bypass reading .txt file for burst mode
-            header_data_for_scatter_event = fabio.edfimage.EdfImage().read(fname).header
-        else:
-            header_data_for_scatter_event = f.header
+        header_data_for_scatter_event = bundled_dicts['scatter_event']
         data.update(header_data_for_scatter_event)
 
         yield 'event', {'descriptor': desc_uid,
